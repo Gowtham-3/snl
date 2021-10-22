@@ -18,8 +18,8 @@
         var pos2=1;
         var turn=0;
         var gameStarted=0;
-        const socket = io('http://localhost:3000');
-        //const socket = io('https://snake-n-ladder-game.herokuapp.com/');
+        //const socket = io('http://localhost:3000');
+        const socket = io('https://snake-n-ladder-game.herokuapp.com/');
         socket.on('connected', connect());
 
         //socket.on('disconnected',disconnect())
