@@ -1,17 +1,23 @@
+// This is the JavaScript file for the client part of Snakes & Ladders
+// and is linked to grid.html
+// [v1, v2, v3, v4, v5, v6].js are just backup versions of grid.js
+
+document.getElementById("board_container").style.display = "none";
+document.getElementById("roll_button").style.display = "none";
 
 
 // GLOBAL VARIABLES
 let speed = 200; //for determining movement speed of markers
 let turn = true; //(turn==true)=>green && (turn==false)=>red
 let dice_val = 0; //random value generated on dice roll
-let space_enabled = true; // if true then the space buttton/roll_dice_button will work
+let space_enabled = false; // if true then the space buttton/roll_dice_button will work
 let enter_enabled = false; // if true then the ENTER button will work
 
 var intervalID1 ; // this variables is used to disable the set-interval when 
 var intervalID2 ; // the markers have reached their desired locations
 
 // STATING THAT INITIAL TURN WILL BE OF GREEN
-document.getElementById('turn').innerHTML = "GREEN";
+document.getElementById('turn').innerHTML = "YOUR TURN";
 
 // INITIALIZING THE CO-ORDINATES OF PLAYERS
 player1 = {x:10, y:1, z:1};
@@ -27,16 +33,20 @@ player2 = {x:10, y:1, z:1};
 var canMove=true;
 var gameStarted=0;
 //const socket = io('http://localhost:3001');
-const socket = io('https://snake-n-ladder-game.herokuapp.com/');
+const socket = io('https://server-snl.herokuapp.com/');
 socket.on('connected', connect());
 
 socket.on('id',(msg) => {
-    document.getElementById("data").innerHTML="Room id:"+msg;
+    document.getElementById("data").innerHTML="Room id: "+msg;
+    document.querySelector('.createRoom_button').remove();
+    document.querySelector('.joinRoom_button').remove();
 });
 
 socket.on('move',()=> {
     console.log("Got permission to move");
     canMove=true;
+    document.getElementById('roller').innerHTML = "Press Space to Roll the Dice." ;
+    //document.querySelector('.hide').style.display = "none"
     setTurn()
 });
 
@@ -44,36 +54,71 @@ socket.on('joined', () => {
     console.log("turn false");
     canMove = false;
     turn = false;
+    change_colors();
+    document.getElementById('turn').innerHTML = "OPPONENT'S TURN";
     document.getElementById("data").innerHTML = "Opponent will start the game";
+    document.getElementById('roller').innerHTML = "Opponent will start the game";
+    document.querySelector('.createRoom_button').remove();
+    document.querySelector('.joinRoom_button').remove();
+
+    //document.querySelector('.hide').style.display = "none"
 });
 
 socket.on('err',(msg) => {
-    document.getElementById("data").innerHTML = msg;
+    //console.log(msg);
+    // document.getElementById("data").innerHTML = msg; 
+    // document.getElementById('roller').innerHTML = msg;
+    document.getElementById("data").innerHTML = "Opponent Disconnected! Click to close the game"; 
+    document.getElementById('roller').innerHTML = "Opponent Disconnected! Click to close the game";
+    document.getElementById('data').style.cursor="pointer"
+    document.getElementById('roller').onclick=function(){
+        window.location.reload();
+    };
+    document.getElementById('data').onclick=function(){
+        window.location.reload();
+    };
 });
 
 socket.on('gameStarted', () => {
     gameStarted=1;
-    document.querySelector('.room_buttons').remove();
-    document.querySelector('.room_buttons').remove();
+    document.getElementById("board_container").style.display = "flex";
+    document.getElementById("roll_button").style.display = "inline-block";
+    space_enabled = true;
+    //document.getElementById('roller').innerHTML = "Press Space to Roll the Dice." ;
 });
 
 socket.on('reflect',(msg) => {
     console.log("Reflected");
     turn = false;
     dice_val = parseInt(msg);
+    document.getElementById('dice_val_button').innerHTML = dice_val ;
+    document.getElementById('dice_val').innerHTML = dice_val ;
     gameEngine();
     socket.emit('ack');
 })
+
+/**
+ * This function is called when client successfully connects to the server.
+ */
 
 function connect()
 {
     console.log("Connection established");
 }
 
+/**
+ * Asks the server to create a room
+ */
+
 function createRoom()
 {
     socket.emit('createRoom');
 }
+
+/**
+ * This function is called when the client wants to join a room.
+ * It sends a room id of the room into which it wants to join, to server.
+ */
 
 function joinRoom()
 {
@@ -83,11 +128,15 @@ function joinRoom()
     socket.emit('joinRoom', msg);
 }
 
+/**
+ * This functions sets the turn to the cuurent player so that he/she can make his move.
+ */
+
 function setTurn()
 {
     turn=true;
     console.log("turn set");
-    document.getElementById("data").innerHTML="Your turn";
+    document.getElementById("data").innerHTML="";
 }
 
 
@@ -102,11 +151,13 @@ function setTurn()
 
 //====================== DISPLAY PLAYER FUNCTION ===========================
 
-function display_players() {
-    // display_players() takes the global values of player1 and player2 coordinates,
-    // creates a div element with id(pos1 and pos2) and class(position1 and position2)
-    // and paints the markers to the screen
+ /**
+     * display_players() takes the global values of player1 and player2 coordinates,
+    creates a div element with id(pos1 and pos2) and class(position1 and position2)
+    and paints the markers to the screen
+     */
 
+function display_players() {
     // Display the player1(Green)
     position1 = document.createElement('div');
     position1.id = 'pos1';
@@ -128,13 +179,23 @@ display_players();
 
 // ================== X & Y VALUE FINDING FUNCTIONS ======================
 
+/**
+ * x_val(z) takes the z co-ordinate as input and returns its corresponding value of 'x'
+ * @param {int} z the value of z-coordinate
+ * @returns {int} x the x-coordinate value corresponding to z
+ */
+
 function x_val(z) {
     // x_val(z) takes the z co-ordinate as input and returns its corresponding 
     // value of 'x'
     return 10-Math.floor((z-1)/10);
 } 
 
-
+/**
+ * x_val(z) takes the z co-ordinate as input and returns its corresponding value of 'y'
+ * @param {int} z the value of z-coordinate
+ * @returns {int} y the x-coordinate value corresponding to z
+ */
 function y_val(z) {
     // y_val(z) takes the z co-ordinate as input and returns its corresponding 
     // value of 'y'
@@ -153,6 +214,13 @@ function y_val(z) {
 
 // ======================= ROLL DICE EFUNCTION ============================
 
+/**
+ * rollDice simply rolls the dice and updates the dice_val
+ * @param {int} a the start of the range of values the die can take(generally a=1)
+ * @param {int} b the start of the range of values the die can take(generally b=6)
+ * @param {bool} turn turn is used to indicate if it is the turn of the current player
+ * @returns {int} 
+ */
 function rollDice(a,b, turn) { 
     // rollDice simply rolls the dice and updates the dice_val
     if(turn){
@@ -164,14 +232,21 @@ function rollDice(a,b, turn) {
         document.getElementById('pos2').classList.add('blinker2');
     }
     dice_val = Math.round(a+(b-a)*Math.random());
+    //dice_val = 1;
+    //socket.emit('dieValue',""+dice_val);
     document.getElementById('dice_val').innerHTML = dice_val ;
     document.getElementById('dice_val_button').innerHTML = dice_val ;
     enter_enabled=true; 
     
-    document.getElementById('roller').innerHTML = "Press Enter to move the Dice." ;
+    document.getElementById('roller').innerHTML = "Click your coin or hit Enter to move" ;
     return dice_val;
 } 
 
+/**
+ * gameEngine() takes the global variable dice_val, checks the turn value, 
+ * calls move1/move2 with setInterval respectively to move the makers to their new location
+ * after moving it just switches the value of turn variable and gives chance to the other player
+ */
 
 function gameEngine(){
     // gameEngine() takes the dice_val as arguement, checks the turn value, 
@@ -180,12 +255,14 @@ function gameEngine(){
     
     console.log("turn "+turn);
     if(turn){
-        document.getElementById('turn').innerHTML = "RED";
+        // document.getElementById('turn').innerHTML = "OPPONENT'S TURN";
         if(player1.z+dice_val>100){
             dice_val = 0;
         }
         intervalID1 = setInterval(move1, speed, player1.z+dice_val);
         socket.emit('dieValue',""+dice_val);
+
+        
 
         console.log("player1.x "+player1.x);
         console.log("player1.y "+player1.y);
@@ -195,7 +272,7 @@ function gameEngine(){
         if(player2.z+dice_val>100){
             dice_val = 0;
         }
-        document.getElementById('turn').innerHTML = "GREEN";
+        //document.getElementById('turn').innerHTML = "YOUR TURN";
         intervalID2 = setInterval(move2, speed, player2.z+dice_val);
         console.log("player2.x "+player2.x);
         console.log("player2.y "+player2.y);
@@ -246,14 +323,22 @@ window.addEventListener('keydown', e => {
                     /* turn = !turn; */
                 }
             }
-            else
-                document.getElementById("data").innerHTML="Wait for you turn";
+            else{
+                if(turn==false){
+                    document.getElementById("data").innerHTML="Wait for you turn";
+                    document.getElementById('roller').innerHTML = "Wait for you turn" ;
+                }
+                else{
+                    document.getElementById("data").innerHTML="Click your coin or hit Enter to move";
+                    document.getElementById('roller').innerHTML = "Click your coin or hit Enter to move" ;
+                }
+            }
             break;
         case "Enter":
             if(enter_enabled){
                 enter_enabled = false;
                 console.log("Enter");
-                document.getElementById("data").innerHTML = "Opponent's turn";
+                //document.getElementById("data").innerHTML = "Opponent's turn";
                 gameEngine();
             }
         default:
@@ -263,6 +348,7 @@ window.addEventListener('keydown', e => {
 });
 
 // ==================ADDING THE ON-CLICK EVENTS======================
+
 
 function click_div() {
     if(enter_enabled){
@@ -301,14 +387,29 @@ function roller_clicked() {
             /* turn = !turn; */
         }
     }
-    else
-        document.getElementById("data").innerHTML="Wait for you turn";
+    else{
+        //if(!enter_enabled)return;
+        if(turn==false){
+            document.getElementById("data").innerHTML="Wait for you turn";
+            document.getElementById('roller').innerHTML = "Wait for you turn" ;
+        }
+        else{
+            document.getElementById("data").innerHTML="Click your coin or hit Enter to move";
+            document.getElementById('roller').innerHTML = "Click your coin or hit Enter to move" ;
+        }
+    }
+
 }
 
 
 // ====================== move functions ==========================
 
-
+/**
+ * move1 function takes the new position of the marker by the z-coordinate of the current player 
+ * and sequentially moves it to the new position step by step.
+ * @param {int} z 
+ * @returns 
+ */
 function move1(z=100) {
     if (player1.z === z) {
         window.clearInterval(intervalID1);
@@ -358,7 +459,12 @@ function move1(z=100) {
         //change_colors();
     }
 }
-
+/**
+ * move1 function takes the new position of the marker by the z-coordinate of the opponent player 
+ * and sequentially moves it to the new position step by step.
+ * @param {int} z 
+ * @returns 
+ */
 function move2(z=100) {
     if (player2.z === z) {
         window.clearInterval(intervalID2);
@@ -411,6 +517,11 @@ function move2(z=100) {
 
 // ============================= CHECK FUNCTION ==========================
 
+/**
+ * check() determines if the markers have landed on some snake or ladder,
+ * if it lands on such event it updates the position markers and calls
+ * the display_players() function to paint the markers to its updated location
+ */
 function check() {
     // check() determines if the markers have landed on some snake or ladder,
     // if it lands on such event it updates the position markers and calls
@@ -500,16 +611,37 @@ function check() {
             display_players();
         }, speed+100);
     }
-    document.getElementById('dice_val').innerHTML = "..." ;
-    document.getElementById('dice_val_button').innerHTML = "..." ;
+
+    setTimeout(() => {
+        document.getElementById('dice_val').innerHTML = "..." ;
+        document.getElementById('dice_val_button').innerHTML = "..." ;
+    }, 2*speed);
+    
     document.getElementById('roller').innerHTML = "Press Space to Roll the Dice." ;
+    document.getElementById("data").innerHTML="";
     space_enabled = true;
-    setTimeout(change_colors, speed);
+    // setTimeout(change_colors, speed);
+    
+    
+    setTimeout(() => {
+        if(turn){
+            document.getElementById('turn').innerHTML = "YOUR TURN";
+        }
+        else{
+            document.getElementById('turn').innerHTML = "OPPONENT'S TURN";
+            document.getElementById('pos2').classList.add('blinker2');
+        }
+        change_colors();
+    }, speed*1.5);
+    
 }
 
 
 // ================== changing colors ====================
 
+/**
+ * changes the border color and button color when turn is changed
+ */
 function change_colors() {
     console.log("change-colors function entered");
     if(turn){
@@ -526,7 +658,9 @@ function change_colors() {
     }
 }
 
-
+/**
+ * displays the empty board
+ */
 
 function display_board() {
     // FOR DISPLAYING THE EMPTY BOARD(NO NEED WHEN USING BACKGROUND IMAGE)
@@ -563,3 +697,6 @@ function display_board() {
     
 
 }
+
+
+// References: Mostly made from scratch
